@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Clock</title>
+    <link rel="stylesheet" href="{% static 'clockapp/styles.css' %}">
+    <script>
+        function addDropdown() {
+            const dropdownsDiv = document.getElementById("dropdowns");
+            const numDropdownsInput = document.getElementById("num_dropdowns");
+            const currentCount = parseInt(numDropdownsInput.value);
+
+            // Create a new dropdown
+            const newDropdown = document.createElement("div");
+            newDropdown.className = "dropdown";
+            newDropdown.innerHTML = `
+                <label for="timezone_${currentCount}">Select Timezone ${currentCount + 1}:</label>
+                <select name="timezone_${currentCount}" id="timezone_${currentCount}">
+                    <option value="">Select a timezone</option>
+                    {% for timezone in timezones %}
+                        <option value="{{ timezone }}">{{ timezone }}</option>
+                    {% endfor %}
+                </select>
+            `;
+
+            // Append the new dropdown and update the count
+            dropdownsDiv.appendChild(newDropdown);
+            numDropdownsInput.value = currentCount + 1;
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>World Clock</h1>
+        <h2>Local Time: {{ local_time }}</h2>
+
+        <form method="POST">
+            {% csrf_token %}
+            <input type="hidden" id="num_dropdowns" name="num_dropdowns" value="{{ num_dropdowns }}">
+            <div id="dropdowns" class="dropdowns">
+                <!-- Renders one default dropdown -->
+                <div class="dropdown">
+                    <label for="timezone_0">Select Timezone 1:</label>
+                    <select name="timezone_0" id="timezone_0">
+                        <option value="">Select a timezone</option>
+                        {% for timezone in timezones %}
+                            <option value="{{ timezone }}">{{ timezone }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <button type="button" class="btn" onclick="addDropdown()">Add Another Timezone</button>
+            <button type="submit" class="btn">Update Time</button>
+        </form>
+
+        <h2>Selected Times:</h2>
+        <ul>
+            {% for timezone, time in selected_times %}
+                <li>{{ timezone }}: {{ time }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+</body>
+</html>
