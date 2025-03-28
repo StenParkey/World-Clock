@@ -30,38 +30,123 @@
             dropdownsDiv.appendChild(newDropdown);
             numDropdownsInput.value = currentCount + 1;
         }
+
+        // Store the initial converted times and their offsets
+        let convertedTimes = [];
+
+        // Function to format a date into both military and AM/PM formats
+        function formatTime(date) {
+            const militaryTime = date.toLocaleTimeString("en-US", { hour12: false });
+            const amPmTime = date.toLocaleTimeString("en-US", { hour12: true });
+            return `${militaryTime} (${amPmTime})`;
+        }
+
+        // Function to update the local time dynamically
+        function updateLocalTime() {
+            const localTimeElement = document.getElementById("local-time");
+            const now = new Date();
+            const formattedTime = formatTime(now); // Format the time as military and AM/PM
+            localTimeElement.textContent = formattedTime;
+        }
+
+        // Function to fetch the initial converted times from the server
+        function fetchConvertedTimes() {
+            const numDropdowns = document.getElementById("num_dropdowns").value;
+            const dropdowns = document.querySelectorAll(".dropdown select");
+            const params = new URLSearchParams();
+
+            params.append("num_dropdowns", numDropdowns);
+            dropdowns.forEach((dropdown, index) => {
+                params.append(`timezone_${index}`, dropdown.value);
+            });
+
+            fetch(`/get-converted-times/?${params.toString()}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Update the convertedTimes array with the initial data from the server
+                    convertedTimes = data.selected_times.map(item => {
+                        const timezoneOffset = new Date().getTimezoneOffset() * 60000; // Local timezone offset in ms
+                        const timezoneDate = new Date(new Date().getTime() + timezoneOffset + item.offset * 1000);
+                        return { timezone: item.timezone, date: timezoneDate };
+                    });
+                    updateConvertedTimes(); // Immediately update the DOM with the fetched times
+                })
+                .catch(error => {
+                    console.error("Error fetching converted times:", error);
+                });
+        }
+
+        // Function to update the converted times dynamically
+        function updateConvertedTimes() {
+            const convertedTimesList = document.getElementById("converted-times");
+
+            // Only update the DOM if convertedTimes has valid data
+            if (convertedTimes.length > 0) {
+                convertedTimesList.innerHTML = ""; // Clear the list
+
+                convertedTimes.forEach((item, index) => {
+                    // Increment the time by 1 second
+                    item.date.setSeconds(item.date.getSeconds() + 1);
+
+                    const formattedTime = formatTime(item.date); // Format the time as military and AM/PM
+                    const listItem = document.createElement("li");
+                    listItem.innerHTML = `<h3>Timezone ${index + 1}:</h3> ${item.timezone}: ${formattedTime}`;
+                    convertedTimesList.appendChild(listItem);
+                });
+            }
+        }
+
+        // Update the local time every second
+        setInterval(updateLocalTime, 1000);
+
+        // Update the converted times every second
+        setInterval(updateConvertedTimes, 1000);
+
+        // Fetch the initial converted times when the page loads
+        window.onload = fetchConvertedTimes;
     </script>
 </head>
 <body>
     <div class="container">
         <h1>World Clock</h1>
-        <h2>Local Time: {{ local_time }}</h2>
 
-        <form method="POST">
-            {% csrf_token %}
-            <input type="hidden" id="num_dropdowns" name="num_dropdowns" value="{{ num_dropdowns }}">
-            <div id="dropdowns" class="dropdowns">
-                <!-- Renders one default dropdown -->
-                <div class="dropdown">
-                    <label for="timezone_0">Select Timezone 1:</label>
-                    <select name="timezone_0" id="timezone_0">
-                        <option value="">Select a timezone</option>
-                        {% for timezone in timezones %}
-                            <option value="{{ timezone }}">{{ timezone }}</option>
-                        {% endfor %}
-                    </select>
+        {% if form_submitted %}
+            <!-- Display converted times and a reset button -->
+            <h2>Local Time: <span id="local-time"></span></h2>
+            <h2>Converted Times:</h2>
+            <ul id="converted-times">
+                {% for timezone, time in selected_times %}
+                    <li>
+                        <h3>Timezone {{ forloop.counter }}:</h3>
+                        {{ timezone }}: {{ time }}
+                    </li>
+                {% endfor %}
+            </ul>
+            <form method="GET">
+                <button type="submit" class="btn">Start New Conversion</button>
+            </form>
+        {% else %}
+            <!-- Display the form for selecting timezones -->
+            <h2>Local Time: <span id="local-time">{{ local_time }}</span></h2>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" id="num_dropdowns" name="num_dropdowns" value="{{ num_dropdowns }}">
+                <div id="dropdowns" class="dropdowns">
+                    <!-- Render one default dropdown -->
+                    <div class="dropdown">
+                        <label for="timezone_0">Select Timezone 1:</label>
+                        <select name="timezone_0" id="timezone_0">
+                            <option value="">Select a timezone</option>
+                            {% for timezone in timezones %}
+                                <option value="{{ timezone }}">{{ timezone }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
-            </div>
-            <button type="button" class="btn" onclick="addDropdown()">Add Another Timezone</button>
-            <button type="submit" class="btn">Update Time</button>
-        </form>
-
-        <h2>Selected Times:</h2>
-        <ul>
-            {% for timezone, time in selected_times %}
-                <li>{{ timezone }}: {{ time }}</li>
-            {% endfor %}
-        </ul>
+                <button type="button" class="btn" onclick="addDropdown()">Add Another Timezone</button>
+                <button type="submit" class="btn">Update Time</button>
+            </form>
+        {% endif %}
     </div>
 </body>
 </html>

@@ -10,8 +10,10 @@ def world_clock(request):
     local_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     selected_times = []
     num_dropdowns = int(request.POST.get("num_dropdowns", 1))  # Default to 1 dropdown
+    form_submitted = False  # Flag to track if the form was submitted
 
     if request.method == "POST":
+        form_submitted = True
         for i in range(num_dropdowns):
             selected_timezone = request.POST.get(f"timezone_{i}")
             if selected_timezone:
@@ -26,4 +28,5 @@ def world_clock(request):
         "timezones": timezones,
         "selected_times": selected_times,
         "num_dropdowns": num_dropdowns,  # Pass the number of dropdowns to the template
+        "form_submitted": form_submitted,  # Pass the form submission status
     })
